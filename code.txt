@@ -1,0 +1,351 @@
+
+-- Create NCU database
+
+CREATE DATABASE NCU;
+
+use NCU;
+
+-- -- Creating the Tables in the NCU database:
+
+CREATE TABLE Department (
+  department_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  address VARCHAR(255) NOT NULL,
+  contact_info VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE Vehicle (
+  vehicle_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  make VARCHAR(255) NOT NULL,
+  model VARCHAR(255) NOT NULL,
+  year int NOT NULL,
+  odometer_reading int NOT NULL
+);
+
+CREATE TABLE Reservation (
+  reservation_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  department_id int NOT NULL,
+  vehicle_type VARCHAR(255) NOT NULL,
+  destination VARCHAR(255) NOT NULL,
+  expected_departure_date DATE NOT NULL,
+  faculty_member VARCHAR(255) NOT NULL,
+  FOREIGN KEY (department_id) REFERENCES Department(department_id)
+);
+
+CREATE TABLE Checkout (
+  checkout_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  vehicle_id int NOT NULL,
+  odometer_reading_start int NOT NULL,
+  odometer_reading_end int NOT NULL,
+  maintenance_complaints VARCHAR(255) NOT NULL,
+  liters_fuel_purchased int NOT NULL,
+  credit_card_number VARCHAR(255) NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES Vehicle(vehicle_id)
+);
+
+CREATE TABLE TripCompletion (
+  completion_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  vehicle_id int NOT NULL,
+  odometer_reading_start int NOT NULL,
+  odometer_reading_end int NOT NULL,
+  maintenance_complaints VARCHAR(255) NOT NULL,
+  liters_fuel_purchased int NOT NULL,
+  credit_card_number VARCHAR(255) NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES Vehicle(vehicle_id)
+);
+
+CREATE TABLE MaintenanceLog (
+  log_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  vehicle_id int NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  log_entry_date DATE NOT NULL,
+  completion_date DATE NOT NULL,
+  mechanic VARCHAR(255) NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES Vehicle(vehicle_id)
+);
+
+CREATE TABLE PartsUsage (
+  usage_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  log_id int NOT NULL,
+  part VARCHAR(255) NOT NULL,
+  mechanic VARCHAR(255) NOT NULL,
+  FOREIGN KEY (log_id) REFERENCES MaintenanceLog(log_id)
+);
+
+CREATE TABLE MileageReport (
+  report_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  vehicle_id int NOT NULL,
+  department_id int NOT NULL,
+  faculty_member VARCHAR(255) NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES Vehicle(vehicle_id),
+  FOREIGN KEY (department_id) REFERENCES Department(department_id)
+);
+
+CREATE TABLE RevenueReport (
+  report_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  vehicle_id int NOT NULL,
+  department_id int NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES Vehicle(vehicle_id),
+  FOREIGN KEY (department_id) REFERENCES Department(department_id)
+);
+
+CREATE TABLE PartsUsageReport (
+  report_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  log_id int NOT NULL,
+  part VARCHAR(255) NOT NULL,
+  FOREIGN KEY (log_id) REFERENCES MaintenanceLog(log_id)
+);
+
+CREATE TABLE VehicleMaintenanceSummary (
+  summary_id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  vehicle_id int NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES Vehicle(vehicle_id)
+);
+
+
+-- Creating the Views in NCU Database
+
+CREATE VIEW available_vehicles AS
+  SELECT v.vehicle_id, v.make, v.model, v.year, v.odometer_reading
+  FROM Vehicle v
+  LEFT JOIN Checkout c ON v.vehicle_id = c.vehicle_id
+  WHERE c.checkout_id IS NULL;
+  
+CREATE VIEW vehicle_usage_by_department AS
+SELECT d.name, COUNT(r.reservation_id) AS num_reservations
+FROM Department d
+INNER JOIN Reservation r ON d.department_id = r.department_id
+GROUP BY d.name;
+
+CREATE VIEW total_mileage_by_department AS
+SELECT d.name, SUM(m.odometer_reading_end - m.odometer_reading_start) AS total_mileage
+FROM Department d
+INNER JOIN Reservation r ON d.department_id = r.department_id
+INNER JOIN TripCompletion m ON r.reservation_id = m.completion_id
+GROUP BY d.name;
+
+
+-- Creating Stored Procedures in NCU database
+
+DELIMITER //
+CREATE PROCEDURE insert_department(IN name VARCHAR(255), IN address VARCHAR(255), IN contact_info VARCHAR(255))
+BEGIN
+  INSERT INTO Department(name, address, contact_info)
+  VALUES(name, address, contact_info);
+END
+
+CREATE PROCEDURE insert_vehicle(IN make VARCHAR(255), IN model VARCHAR(255), IN year INT, IN odometer_reading INT)
+BEGIN
+  INSERT INTO Vehicle(make, model, year, odometer_reading)
+  VALUES(make, model, year, odometer_reading);
+END
+
+
+CREATE PROCEDURE insert_reservation(IN department_id INT, IN vehicle_type VARCHAR(255), IN destination VARCHAR(255), IN expected_departure_date DATE, IN faculty_member VARCHAR(255))
+BEGIN
+  INSERT INTO Reservation(department_id, vehicle_type, destination, expected_departure_date, faculty_member)
+  VALUES(department_id, vehicle_type, destination, expected_departure_date, faculty_member);
+END
+
+CREATE PROCEDURE insert_checkout(IN vehicle_id INT, IN odometer_reading_start INT, IN odometer_reading_end INT, IN maintenance_complaints VARCHAR(255), IN liters_fuel_purchased INT, IN credit_card_number VARCHAR(255))
+BEGIN
+  INSERT INTO Checkout(vehicle_id, odometer_reading_start, odometer_reading_end, maintenance_complaints, liters_fuel_purchased, credit_card_number)
+  VALUES(vehicle_id, odometer_reading_start, odometer_reading_end, maintenance_complaints, liters_fuel_purchased, credit_card_number);
+END
+
+CREATE PROCEDURE insert_trip_completion(IN vehicle_id INT, IN odometer_reading_start INT, IN odometer_reading_end INT, IN maintenance_complaints VARCHAR(255), IN liters_fuel_purchased INT, IN credit_card_number VARCHAR(255))
+BEGIN
+  INSERT INTO TripCompletion(vehicle_id, odometer_reading_start, odometer_reading_end, maintenance_complaints, liters_fuel_purchased, credit_card_number)
+  VALUES(vehicle_id, odometer_reading_start, odometer_reading_end, maintenance_complaints, liters_fuel_purchased, credit_card_number);
+END
+
+CREATE PROCEDURE insert_maintenance_log(IN vehicle_id INT, IN description VARCHAR(255), IN log_entry_date DATE, IN completion_date DATE, IN mechanic VARCHAR(255))
+BEGIN
+  INSERT INTO MaintenanceLog(vehicle_id, description, log_entry_date, completion_date, mechanic)
+  VALUES(vehicle_id, description, log_entry_date, completion_date, mechanic);
+END
+
+CREATE PROCEDURE insert_parts_usage(IN log_id INT, IN part VARCHAR(255), IN mechanic VARCHAR(255))
+BEGIN
+  INSERT INTO PartsUsage(log_id, part, mechanic)
+  VALUES(log_id, part, mechanic);
+END
+
+CREATE PROCEDURE insert_mileage_report(IN vehicle_id INT, IN department_id INT, IN faculty_member VARCHAR(255))
+BEGIN
+  INSERT INTO MileageReport(vehicle_id, department_id, faculty_member)
+  VALUES(vehicle_id, department_id, faculty_member);
+END
+
+CREATE PROCEDURE insert_revenue_report(IN vehicle_id INT, IN department_id INT)
+BEGIN
+  INSERT INTO RevenueReport(vehicle_id, department_id)
+  VALUES(vehicle_id, department_id);
+END
+
+CREATE PROCEDURE insert_parts_usage_report(IN log_id INT, IN part VARCHAR(255))
+BEGIN
+  INSERT INTO PartsUsageReport(log_id, part)
+  VALUES(log_id, part);
+END
+
+CREATE PROCEDURE insert_vehicle_maintenance_summary(IN vehicle_id INT, IN description VARCHAR(255))
+BEGIN
+  INSERT INTO VehicleMaintenanceSummary(vehicle_id, description)
+  VALUES(vehicle_id, description);
+END;
+
+DELIMITER ;
+
+
+-- Creating Triggers in NCU database
+
+
+DELIMITER //
+CREATE TRIGGER update_checkout_on_update
+BEFORE UPDATE ON Checkout
+FOR EACH ROW
+BEGIN
+  IF NEW.odometer_reading_end < OLD.odometer_reading_start THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Odometer reading end cannot be less than odometer reading start.';
+  END IF;
+END;
+
+CREATE TRIGGER update_trip_completion_on_update
+BEFORE UPDATE ON TripCompletion
+FOR EACH ROW
+BEGIN
+  IF NEW.odometer_reading_end < OLD.odometer_reading_start THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Odometer reading end cannot be less than odometer reading start.';
+  END IF;
+END;
+DELIMITER ;
+
+
+-- CREATE INSERT STATEMENTS FOR OUR TABLES IN NCU
+
+INSERT INTO Department (name, address, contact_info) VALUES
+('Business', '123 Main Street', '123-456-7890'),
+('Engineering', '456 Second Street', '123-456-7891'),
+('Humanities', '789 Third Street', '123-456-7892'),
+('Nursing', '321 Fourth Street', '123-456-7893'),
+('Science', '654 Fifth Street', '123-456-7894');
+
+INSERT INTO Vehicle (make, model, year, odometer_reading) VALUES
+('Ford', 'Focus', 2018, 10000),
+('Chevrolet', 'Malibu', 2019, 20000),
+('Honda', 'Accord', 2020, 30000),
+('Toyota', 'Corolla', 2021, 40000),
+('Nissan', 'Altima', 2022, 50000);
+
+INSERT INTO Reservation (department_id, vehicle_id, vehicle_type, destination, expected_departure_date, faculty_member) VALUES
+(1, 1, 'Van', 'New York', '2022-01-01', 'John Smith'),
+(2, 2, 'SUV', 'Chicago', '2022-02-01', 'Jane Doe'),
+(3, 3, 'Sedan', 'Los Angeles', '2022-03-01', 'Bob Jones'),
+(4, 4, 'Truck', 'Houston', '2022-04-01', 'Mary Smith'),
+(5, 5, 'Coupe', 'Philadelphia', '2022-05-01', 'John Doe');
+
+INSERT INTO Checkout (vehicle_id, department_id, odometer_reading_start, odometer_reading_end, maintenance_complaints, liters_fuel_purchased, credit_card_number) VALUES
+(1, 1, 10000, 11000, 'None', 10, '12345'),
+(2, 2, 20000, 21000, 'None', 20, '23456'),
+(3, 3, 30000, 31000, 'None', 30, '34567'),
+(4, 4, 40000, 41000, 'None', 40, '45678'),
+(5, 5, 50000, 51000, 'None', 50, '56789');
+
+INSERT INTO TripCompletion (vehicle_id, odometer_reading_start, odometer_reading_end, maintenance_complaints, liters_fuel_purchased, credit_card_number) VALUES
+(1, 11000, 12000, 'None', 10, '12345'),
+(2, 21000, 22000, 'None', 20, '23456'),
+(3, 31000, 32000, 'None', 30, '34567'),
+(4, 41000, 42000, 'None', 40, '45678'),
+(5, 51000, 52000, 'None', 50, '56789');
+
+INSERT INTO MaintenanceLog (vehicle_id, description, log_entry_date, completion_date, mechanic) VALUES
+(1, 'Replace tires', '2022-01-01', '2022-01-02', 'Bob Jones'),
+(2, 'Replace brakes', '2022-02-01', '2022-02-02', 'John Smith'),
+(3, 'Replace spark plugs', '2022-03-01', '2022-03-02', 'Jane Doe'),
+(4, 'Replace oil filter', '2022-04-01', '2022-04-02', 'Mary Smith'),
+(5, 'Replace air filter', '2022-05-01', '2022-05-02', 'John Doe');
+
+INSERT INTO PartsUsage (log_id, part, mechanic) VALUES
+(1, 'Tires', 'Bob Jones'),
+(2, 'Brakes', 'John Smith'),
+(3, 'Spark Plugs', 'Jane Doe'),
+(4, 'Oil Filter', 'Mary Smith'),
+(5, 'Air Filter', 'John Doe');
+
+INSERT INTO MileageReport (vehicle_id, department_id, faculty_member) VALUES
+(1, 1, 'John Smith'),
+(2, 2, 'Jane Doe'),
+(3, 3, 'Bob Jones'),
+(4, 4, 'Mary Smith'),
+(5, 5, 'John Doe');
+
+INSERT INTO RevenueReport (vehicle_id, department_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3),
+(4, 4),
+(5, 5);
+
+INSERT INTO PartsUsageReport (log_id, part) VALUES
+(1, 'Tires'),
+(2, 'Brakes'),
+(3, 'Spark Plugs'),
+(4, 'Oil Filter'),
+(5, 'Air Filter');
+
+INSERT INTO VehicleMaintenanceSummary (vehicle_id, description) VALUES
+(1, 'Replace tires'),
+(2, 'Replace brakes'),
+(3, 'Replace spark plugs'),
+(4, 'Replace oil filter'),
+(5, 'Replace air filter');
+
+
+
+-- Querires
+
+-- Display all available vehicles on a given date:
+
+SELECT Vehicle.make, Vehicle.model, Vehicle.year
+FROM Vehicle
+LEFT JOIN Reservation
+ON Vehicle.vehicle_id = Reservation.vehicle_id
+WHERE Reservation.expected_departure_date != '2022-01-01';
+
+
+-- Display how many vehicles each department has used so far:
+
+SELECT Department.name, COUNT(Reservation.department_id) AS total_vehicles_used
+FROM Department
+LEFT JOIN Reservation
+ON Department.department_id = Reservation.department_id
+GROUP BY Department.name;
+
+
+-- Display the total mileage driven by a department this year:
+
+SELECT Department.name, SUM(Checkout.odometer_reading_end - Checkout.odometer_reading_start) AS total_mileage_this_year
+FROM Department
+LEFT JOIN Checkout 
+ON Department.department_id = Checkout.department_id
+GROUP BY Department.name;
+
+ 
+-- Show details of a particular bill:
+
+SELECT Checkout.credit_card_number, Checkout.odometer_reading_start, Checkout.odometer_reading_end, Checkout.liters_fuel_purchased
+FROM Checkout
+WHERE Checkout.credit_card_number = '12345';
+
+
+-- Display those who booked vehicles but not actually used them:
+
+SELECT Reservation.faculty_member
+FROM Reservation
+LEFT JOIN TripCompletion
+ON Reservation.vehicle_id = TripCompletion.vehicle_id
+WHERE TripCompletion.vehicle_id IS NULL;
+
+

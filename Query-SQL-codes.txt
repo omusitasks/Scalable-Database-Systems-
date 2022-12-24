@@ -1,0 +1,67 @@
+1.	Typical transactions
+
+●	Display all available vehicles on a given date.
+
+SELECT *
+FROM vehicles
+WHERE available_date = {date_input};
+
+●	Display how many vehicles each department has used so far.
+
+SELECT department, COUNT(*) 
+FROM reservation 
+GROUP BY department;
+
+●	Display the total mileage driven by a department this year.
+
+SELECT department, SUM(mileage) 
+FROM trip_completion 
+WHERE YEAR(date) = {year_input} 
+GROUP BY department;
+
+●	Show details of a particular bill.
+
+SELECT * 
+FROM department_bill 
+WHERE bill_number = {bill_number_input};
+
+●	Display those who booked vehicles but not actually used them.
+
+SELECT * 
+FROM reservation 
+WHERE reservation_id NOT IN (SELECT reservation_id FROM trip_completion);
+
+
+
+
+SQL Queries:
+1. Display all available vehicles on a given date: 
+SELECT * FROM Vehicle WHERE NOT EXISTS (SELECT * FROM Reservation WHERE Vehicle.vehicle_id = Reservation.vehicle_id 
+AND Reservation.expected_departure_date = <given date>);
+
+2. Display how many vehicles each department has used so far: 
+SELECT Department.name, COUNT(Reservation.vehicle_id) AS number_of_vehicles_used 
+FROM Reservation 
+INNER JOIN Department ON Reservation.department_id = Department.id
+GROUP BY Department.name;
+
+3. Display the total mileage driven by a department this year: 
+SELECT Department.name, SUM(Checkout.odometer_reading_end - Checkout.odometer_reading_start) AS total_mileage_driven 
+FROM Checkout 
+INNER JOIN Reservation ON Checkout.reservation_id = Reservation.id 
+INNER JOIN Department ON Reservation.department_id = Department.id 
+WHERE YEAR(Checkout.date) = <given year> 
+GROUP BY Department.name;
+
+4. Show details of a particular bill: 
+SELECT * 
+FROM Trip_Completion 
+INNER JOIN Checkout ON Trip_Completion.checkout_id = Checkout.id 
+INNER JOIN Reservation ON Checkout.reservation_id = Reservation.id 
+WHERE Trip_Completion.bill_id = <given bill id>;
+
+5. Display those who booked vehicles but not actually used them: 
+SELECT Reservation.faculty_name 
+FROM Reservation 
+LEFT JOIN Checkout ON Reservation.id = Checkout.reservation_id 
+WHERE Checkout.id IS NULL;
